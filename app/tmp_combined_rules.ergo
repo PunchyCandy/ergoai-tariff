@@ -1,0 +1,123 @@
+/* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/data/products.ergo ---- */
+/* data/products.ergo */
+
+product(p_router, hs8517_62, electronics, wireless_router).
+product(p_laptop, hs8471_30, electronics, laptop_computer).
+product(p_tshirt, hs6109_10, apparel, cotton_tshirt).
+product(p_shoes,  hs6403_99, apparel, leather_shoes).
+product(p_parts,  hs8504_40, electronics, power_supply_unit).
+
+hs_label(hs8517_62, label_8517_62).
+hs_label(hs8471_30, label_8471_30).
+hs_label(hs6109_10, label_6109_10).
+hs_label(hs6403_99, label_6403_99).
+hs_label(hs8504_40, label_8504_40).
+
+
+/* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/data/shipments.ergo ---- */
+/* data/shipments.ergo */
+
+shipment(s1, china,  usa, p_router, 1000, date(2025,11,10)).
+shipment(s2, mexico, usa, p_tshirt, 200,  date(2026, 1,15)).
+shipment(s3, canada, usa, p_router, 500,  date(2025,10, 5)).
+shipment(s4, china,  usa, p_laptop, 700,  date(2025, 9,20)).
+shipment(s5, japan,  usa, p_parts,  1200, date(2026, 2, 2)).
+
+
+/* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/policy/usa_base.ergo ---- */
+/* policy/usa_base.ergo */
+
+tariff_rate(usa, hs8517_62, 0.05, date(2020,1,1), date(9999,12,31), hts_base).
+tariff_rate(usa, hs8471_30, 0.02, date(2020,1,1), date(9999,12,31), hts_base).
+tariff_rate(usa, hs6109_10, 0.12, date(2020,1,1), date(9999,12,31), hts_base).
+tariff_rate(usa, hs6403_99, 0.08, date(2020,1,1), date(9999,12,31), hts_base).
+tariff_rate(usa, hs8504_40, 0.03, date(2020,1,1), date(9999,12,31), hts_base).
+
+
+/* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/policy/usa_exec_overrides.ergo ---- */
+/* policy/usa_exec_overrides.ergo */
+
+exec_override(eo_2025_1101, usa, china, hs8517_62, 0.10, date(2025,11,1), eo_2025_1101).
+exec_override(eo_2026_0101, usa, japan, hs8504_40, 0.02, date(2026, 1,1), eo_2026_0101).
+
+
+/* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/policy/exemptions.ergo ---- */
+/* policy/exemptions.ergo */
+
+exempt_rule(r_fta_canada_router, canada, usa, hs8517_62, date(2019,1,1), fta_demo).
+
+de_minimis(usa, 800, date(2016,1,1), de_minimis_demo).
+
+
+/* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/rules/decision.ergo ---- */
+/* rules/decision.ergo */
+
+/* Convert date(Y,M,D) to integer YYYYMMDD for easy comparisons */
+date_int(date(?Y,?M,?D), ?I) :- ?I \is (?Y*10000 + ?M*100 + ?D).
+
+date_ge(?D1, ?D2) :- date_int(?D1, ?I1), date_int(?D2, ?I2), ?I1 >= ?I2.
+date_le(?D1, ?D2) :- date_int(?D1, ?I1), date_int(?D2, ?I2), ?I1 =< ?I2.
+
+active_on(?D, ?From, ?To) :- date_ge(?D, ?From), date_le(?D, ?To).
+
+/* De minimis applies if value <= threshold and date >= effective_from */
+de_minimis_applies(?S, ?Threshold, ?Src) :-
+  shipment(?S, ?_O, ?I, ?_P, ?V, ?D),
+  de_minimis(?I, ?Threshold, ?From, ?Src),
+  date_ge(?D, ?From),
+  ?V =< ?Threshold.
+
+/* Explicit exemption rule (FTA-style) */
+exempt_applies(?S, ?RuleId, ?Src) :-
+  shipment(?S, ?O, ?I, ?P, ?_V, ?D),
+  product(?P, ?H, ?_Cat, ?_Desc),
+  exempt_rule(?RuleId, ?O, ?I, ?H, ?From, ?Src),
+  date_ge(?D, ?From).
+
+/* Base rate lookup */
+base_rate(?I, ?H, ?D, ?Rb, ?Src) :-
+  tariff_rate(?I, ?H, ?Rb, ?From, ?To, ?Src),
+  active_on(?D, ?From, ?To).
+
+/* Pick one applicable override (if present) */
+override_delta(?I, ?O, ?H, ?D, ?R, ?Src) :-
+  exec_override(?_EO, ?I, ?O, ?H, ?R, ?Eff, ?Src),
+  date_ge(?D, ?Eff).
+
+override_exists(?I, ?O, ?H, ?D) :-
+  exec_override(?_EO, ?I, ?O, ?H, ?_R, ?Eff, ?_Src),
+  date_ge(?D, ?Eff).
+
+override_delta(?I, ?O, ?H, ?D, 0.0, none) :-
+  shipment(?_S, ?O, ?I, ?P, ?_V, ?D),
+  product(?P, ?H, ?_Cat, ?_Desc),
+  \naf override_exists(?I, ?O, ?H, ?D).
+
+de_minimis_applies_s(?S) :- de_minimis_applies(?S, ?_T, ?_Sx).
+exempt_applies_s(?S) :- exempt_applies(?S, ?_R, ?_Rx).
+
+/* Applicable rate with precedence */
+applicable_rate(?S, 0.0, expl(de_minimis, detail(items([threshold_usd(?Thr), source(?Src)])))) :-
+  de_minimis_applies(?S, ?Thr, ?Src).
+
+applicable_rate(?S, 0.0, expl(exempt, detail(items([rule(?R), source(?Src)])))) :-
+  \naf de_minimis_applies_s(?S),
+  exempt_applies(?S, ?R, ?Src).
+
+applicable_rate(?S, ?Rtotal,
+  expl(tariff, detail(items([hs_code(?H), label(?HL), base(?Rb,?Bsrc), override(?Ro,?Osrc)])))) :-
+  \naf de_minimis_applies_s(?S),
+  \naf exempt_applies_s(?S),
+  shipment(?S, ?O, ?I, ?P, ?_V, ?D),
+  product(?P, ?H, ?_Cat, ?_Desc),
+  hs_label(?H, ?HL),
+  base_rate(?I, ?H, ?D, ?Rb, ?Bsrc),
+  override_delta(?I, ?O, ?H, ?D, ?Ro, ?Osrc),
+  ?Rtotal \is (?Rb + ?Ro).
+
+duty(?S, ?DutyUSD, ?Rate, ?Expl) :-
+  shipment(?S, ?_O, ?_I, ?_P, ?V, ?_D),
+  applicable_rate(?S, ?Rate, ?Expl),
+  ?DutyUSD \is (?V * ?Rate).
+
+

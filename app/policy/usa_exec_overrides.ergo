@@ -1,0 +1,4 @@
+/* policy/usa_exec_overrides.ergo */
+
+exec_override(eo_2025_1101, usa, china, hs8517_62, 0.10, date(2025,11,1), eo_2025_1101).
+exec_override(eo_2026_0101, usa, japan, hs8504_40, 0.02, date(2026, 1,1), eo_2026_0101).

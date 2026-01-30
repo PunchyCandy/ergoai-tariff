@@ -1,0 +1,69 @@
+/* rules/decision.ergo */
+
+/* Convert date(Y,M,D) to integer YYYYMMDD for easy comparisons */
+date_int(date(?Y,?M,?D), ?I) :- ?I \is (?Y*10000 + ?M*100 + ?D).
+
+date_ge(?D1, ?D2) :- date_int(?D1, ?I1), date_int(?D2, ?I2), ?I1 >= ?I2.
+date_le(?D1, ?D2) :- date_int(?D1, ?I1), date_int(?D2, ?I2), ?I1 =< ?I2.
+
+active_on(?D, ?From, ?To) :- date_ge(?D, ?From), date_le(?D, ?To).
+
+/* De minimis applies if value <= threshold and date >= effective_from */
+de_minimis_applies(?S, ?Threshold, ?Src) :-
+  shipment(?S, ?_O, ?I, ?_P, ?V, ?D),
+  de_minimis(?I, ?Threshold, ?From, ?Src),
+  date_ge(?D, ?From),
+  ?V =< ?Threshold.
+
+/* Explicit exemption rule (FTA-style) */
+exempt_applies(?S, ?RuleId, ?Src) :-
+  shipment(?S, ?O, ?I, ?P, ?_V, ?D),
+  product(?P, ?H, ?_Cat, ?_Desc),
+  exempt_rule(?RuleId, ?O, ?I, ?H, ?From, ?Src),
+  date_ge(?D, ?From).
+
+/* Base rate lookup */
+base_rate(?I, ?H, ?D, ?Rb, ?Src) :-
+  tariff_rate(?I, ?H, ?Rb, ?From, ?To, ?Src),
+  active_on(?D, ?From, ?To).
+
+/* Pick one applicable override (if present) */
+override_delta(?I, ?O, ?H, ?D, ?R, ?Src) :-
+  exec_override(?_EO, ?I, ?O, ?H, ?R, ?Eff, ?Src),
+  date_ge(?D, ?Eff).
+
+override_exists(?I, ?O, ?H, ?D) :-
+  exec_override(?_EO, ?I, ?O, ?H, ?_R, ?Eff, ?_Src),
+  date_ge(?D, ?Eff).
+
+override_delta(?I, ?O, ?H, ?D, 0.0, none) :-
+  shipment(?_S, ?O, ?I, ?P, ?_V, ?D),
+  product(?P, ?H, ?_Cat, ?_Desc),
+  \naf override_exists(?I, ?O, ?H, ?D).
+
+de_minimis_applies_s(?S) :- de_minimis_applies(?S, ?_T, ?_Sx).
+exempt_applies_s(?S) :- exempt_applies(?S, ?_R, ?_Rx).
+
+/* Applicable rate with precedence */
+applicable_rate(?S, 0.0, expl(de_minimis, detail(items([threshold_usd(?Thr), source(?Src)])))) :-
+  de_minimis_applies(?S, ?Thr, ?Src).
+
+applicable_rate(?S, 0.0, expl(exempt, detail(items([rule(?R), source(?Src)])))) :-
+  \naf de_minimis_applies_s(?S),
+  exempt_applies(?S, ?R, ?Src).
+
+applicable_rate(?S, ?Rtotal,
+  expl(tariff, detail(items([hs_code(?H), label(?HL), base(?Rb,?Bsrc), override(?Ro,?Osrc)])))) :-
+  \naf de_minimis_applies_s(?S),
+  \naf exempt_applies_s(?S),
+  shipment(?S, ?O, ?I, ?P, ?_V, ?D),
+  product(?P, ?H, ?_Cat, ?_Desc),
+  hs_label(?H, ?HL),
+  base_rate(?I, ?H, ?D, ?Rb, ?Bsrc),
+  override_delta(?I, ?O, ?H, ?D, ?Ro, ?Osrc),
+  ?Rtotal \is (?Rb + ?Ro).
+
+duty(?S, ?DutyUSD, ?Rate, ?Expl) :-
+  shipment(?S, ?_O, ?_I, ?_P, ?V, ?_D),
+  applicable_rate(?S, ?Rate, ?Expl),
+  ?DutyUSD \is (?V * ?Rate).

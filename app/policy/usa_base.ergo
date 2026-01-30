@@ -1,0 +1,7 @@
+/* policy/usa_base.ergo */
+
+tariff_rate(usa, hs8517_62, 0.05, date(2020,1,1), date(9999,12,31), hts_base).
+tariff_rate(usa, hs8471_30, 0.02, date(2020,1,1), date(9999,12,31), hts_base).
+tariff_rate(usa, hs6109_10, 0.12, date(2020,1,1), date(9999,12,31), hts_base).
+tariff_rate(usa, hs6403_99, 0.08, date(2020,1,1), date(9999,12,31), hts_base).
+tariff_rate(usa, hs8504_40, 0.03, date(2020,1,1), date(9999,12,31), hts_base).

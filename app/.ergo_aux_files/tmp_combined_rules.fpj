@@ -1,0 +1,5 @@
+%% #include info for source file: /Users/punchycandy/Downloads/ergoai-tariff/app/tmp_combined_rules.ergo
+
+
+:-(multifile(/('_$_$_ergo''include_prj_info',2))).
+'_$_$_ergo''include_prj_info'('/Users/punchycandy/Downloads/ergoai-tariff/app/tmp_combined_rules.ergo',null).

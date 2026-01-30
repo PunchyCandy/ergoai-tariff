@@ -1,0 +1,7 @@
+/* data/shipments.ergo */
+
+shipment(s1, china,  usa, p_router, 1000, date(2025,11,10)).
+shipment(s2, mexico, usa, p_tshirt, 200,  date(2026, 1,15)).
+shipment(s3, canada, usa, p_router, 500,  date(2025,10, 5)).
+shipment(s4, china,  usa, p_laptop, 700,  date(2025, 9,20)).
+shipment(s5, japan,  usa, p_parts,  1200, date(2026, 2, 2)).

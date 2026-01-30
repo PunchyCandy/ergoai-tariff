@@ -1,0 +1,13 @@
+/* data/products.ergo */
+
+product(p_router, hs8517_62, electronics, wireless_router).
+product(p_laptop, hs8471_30, electronics, laptop_computer).
+product(p_tshirt, hs6109_10, apparel, cotton_tshirt).
+product(p_shoes,  hs6403_99, apparel, leather_shoes).
+product(p_parts,  hs8504_40, electronics, power_supply_unit).
+
+hs_label(hs8517_62, label_8517_62).
+hs_label(hs8471_30, label_8471_30).
+hs_label(hs6109_10, label_6109_10).
+hs_label(hs6403_99, label_6403_99).
+hs_label(hs8504_40, label_8504_40).

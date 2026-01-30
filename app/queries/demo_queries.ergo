@@ -1,0 +1,13 @@
+/* queries/demo_queries.ergo */
+
+duty(s1, ?Duty, ?Rate, ?Expl).
+duty(s2, ?Duty, ?Rate, ?Expl).
+duty(s3, ?Duty, ?Rate, ?Expl).
+duty(s4, ?Duty, ?Rate, ?Expl).
+duty(s5, ?Duty, ?Rate, ?Expl).
+
+applicable_rate(s1, ?Rate, ?Expl).
+applicable_rate(s3, ?Rate, ?Expl).
+
+shipment(s1, ?O, ?I, ?P, ?V, ?D).
+product(?P, ?H, ?C, ?Desc).

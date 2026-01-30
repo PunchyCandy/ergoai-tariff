@@ -1,103 +1,123 @@
-"""
-app/main.py
+import sys, os, json
+from dotenv import load_dotenv
 
-Entry point for the ErgoAI Tariff Reasoner demo.
+load_dotenv()
 
-Right now this doesn't call ErgoAI or the retriever yet.
-It just shows the shape of the final system:
-  1. We have a shipment.
-  2. We "look up" base duty.
-  3. We "apply" any policy adjustments the RAG layer would have found.
-  4. We print an explanation.
+ERGOROOT = os.getenv("ERGOROOT")
+XSBARCHDIR = os.getenv("XSBARCHDIR")
 
-Later:
-- Step 2 will come from ErgoAI rules in /ergo
-- Step 3 will come from rag/retrieval.py + summarize_to_facts
-"""
+if not ERGOROOT or not XSBARCHDIR:
+    raise EnvironmentError(
+        "Missing ERGOROOT or XSBARCHDIR in .env or environment variables."
+    )
 
-from datetime import date
+ERGO_PY_PATH = os.path.join(ERGOROOT, "python")
+if ERGO_PY_PATH not in sys.path:
+    sys.path.insert(0, ERGO_PY_PATH)
 
-def mock_ergo_compute_base_rate(hts_code: str, origin: str) -> dict:
-    """
-    Placeholder for ErgoAI reasoning.
+try:
+    from pyergo import \
+        pyergo_start_session, pyergo_end_session,       \
+        pyergo_command, pyergo_query,                   \
+        HILOGFunctor, PROLOGFunctor,                    \
+        ERGOVariable, ERGOString, ERGOIRI, ERGOSymbol,  \
+        ERGOIRI, ERGOCharlist, ERGODatetime,            \
+        ERGODuration, ERGOUserDatatype,                 \
+        pyxsb_query, pyxsb_command,                     \
+        XSBFunctor, XSBVariable, XSBAtom, XSBString,    \
+        PYERGOException, PYXSBException
+except Exception as e:
+    raise ImportError(
+        f"Failed to import ErgoAI Python bindings from "
+        f"{ERGO_PY_PATH}. If you're using a virtualenv, "
+        "install missing dependencies (e.g., `pip install six`) "
+        "or ensure ERGOAI_3.0 is present at the expected path."
+    ) from e
 
-    Returns what ErgoAI will eventually give us:
-    - base_rate_pct: base % duty based on HTS and origin
-    - legal_basis: citation / rule name
-    """
-    # TODO: replace with a real ErgoAI query
-    return {
-        "base_rate_pct": 0.0,
-        "legal_basis": f"HTS {hts_code} base rate for origin {origin}"
-    }
 
-def mock_rag_adjustments(hts_code: str, origin: str, on_date: str) -> dict:
-    """
-    Placeholder for the RAG layer.
+def term_to_python(term):
+    if term is None or isinstance(term, (int, float, str, bool)):
+        return term
+    if isinstance(term, (list, tuple)):
+        return [term_to_python(item) for item in term]
 
-    Returns any temporary surcharges, exclusions, etc.
-    Eventually this will come from rag/retrieval.py and summarize_to_facts.py.
-    """
-    # For now we just fake: no additional surcharges
-    return {
-        "surcharges_pct": 0.0,
-        "explanation": f"No temporary surcharges found for {hts_code} from {origin} as of {on_date}."
-    }
+    if hasattr(term, "value"):
+        try:
+            return term_to_python(term.value)
+        except Exception:
+            return str(term)
 
-def compute_total_duty(value_usd: float, base_rate_pct: float, surcharges_pct: float) -> float:
-    """
-    Compute the total duty owed in dollars.
-    total_rate = base_rate_pct + surcharges_pct
-    duty = value_usd * total_rate/100
-    """
-    total_rate_pct = base_rate_pct + surcharges_pct
-    duty_amount = value_usd * (total_rate_pct / 100.0)
-    return round(duty_amount, 2)
+    if hasattr(term, "name") and hasattr(term, "args"):
+        name = term.name
+        if hasattr(name, "value"):
+            name = name.value
+        args = [term_to_python(arg) for arg in term.args]
+        return {"functor": name, "args": args}
+
+    if hasattr(term, "args"):
+        try:
+            return [term_to_python(arg) for arg in term.args]
+        except Exception:
+            return str(term)
+
+    return str(term)
+
 
 def main():
-    # Example shipment (eventually this will come from user input / API request)
-    shipment = {
-        "hts_code": "8542.31.0000",     # Example: integrated circuits
-        "origin": "TW",                 # Taiwan
-        "dest": "US",
-        "declared_value_usd": 10000.00,
-        "import_date": str(date.today())
-    }
+    pyergo_start_session(XSBARCHDIR, ERGOROOT)
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # 1. Ask ErgoAI (base tariff logic)
-    ergo_result = mock_ergo_compute_base_rate(
-        hts_code=shipment["hts_code"],
-        origin=shipment["origin"]
-    )
+        rule_files = [
+            os.path.join(base_dir, "data/products.ergo"),
+            os.path.join(base_dir, "data/shipments.ergo"),
+            os.path.join(base_dir, "policy/usa_base.ergo"),
+            os.path.join(base_dir, "policy/usa_exec_overrides.ergo"),
+            os.path.join(base_dir, "policy/exemptions.ergo"),
+            os.path.join(base_dir, "rules/decision.ergo"),
+        ]
 
-    # 2. Ask RAG (policy adjustments like Section 301, exclusions, etc.)
-    rag_result = mock_rag_adjustments(
-        hts_code=shipment["hts_code"],
-        origin=shipment["origin"],
-        on_date=shipment["import_date"]
-    )
+        combined_path = os.path.join(base_dir, "tmp_combined_rules.ergo")
+        with open(combined_path, "w", encoding="utf-8") as out:
+            for path in rule_files:
+                out.write(f"/* ---- {path} ---- */\n")
+                with open(path, "r", encoding="utf-8") as src:
+                    out.write(src.read())
+                out.write("\n\n")
 
-    # 3. Compute final duty
-    duty_due = compute_total_duty(
-        value_usd=shipment["declared_value_usd"],
-        base_rate_pct=ergo_result["base_rate_pct"],
-        surcharges_pct=rag_result["surcharges_pct"]
-    )
+        res = pyergo_command(f"['{combined_path}'].")
+        print(f"Loaded import-tax KB (result: {res})")
 
-    # 4. Pretty-print result
-    print("=== ErgoAI Tariff Reasoner Demo ===")
-    print(f"HTS Code:              {shipment['hts_code']}")
-    print(f"Country of Origin:     {shipment['origin']}")
-    print(f"Declared Value (USD):  {shipment['declared_value_usd']}")
-    print(f"Import Date:           {shipment['import_date']}")
-    print()
-    print(f"Base Rate (%):         {ergo_result['base_rate_pct']}%")
-    print(f"Policy Surcharges (%): {rag_result['surcharges_pct']}%")
-    print(f"=> Total Duty Owed:    ${duty_due}")
-    print()
-    print("Explanation:")
-    print(f"- Base rule: {ergo_result['legal_basis']}")
-    print(f"- RAG note:  {rag_result['explanation']}")
+        queries = [
+            # Main demo: duty owed + rate + structured explanation
+            "duty(s1, ?Duty, ?Rate, ?Expl).",
+            "duty(s2, ?Duty, ?Rate, ?Expl).",
+            "duty(s3, ?Duty, ?Rate, ?Expl).",
+            "duty(s4, ?Duty, ?Rate, ?Expl).",
+            "duty(s5, ?Duty, ?Rate, ?Expl).",
+
+            # Show why: rate-only derivation
+            "applicable_rate(s1, ?Rate, ?Expl).",
+            "applicable_rate(s3, ?Rate, ?Expl).",
+
+            # Inspect input data for a shipment
+            "shipment(s1, ?O, ?I, ?P, ?V, ?D).",
+            "product(?P, ?H, ?C, ?Desc).",
+        ]
+
+        for query in queries:
+            answers = pyergo_query(query)
+            if not answers:
+                print("No solutions found for:", query)
+                continue
+
+            for i, ans in enumerate(answers, start=1):
+                bindings = {name: val for (name, val) in ans[0]}
+                pretty = {k: term_to_python(v) for k, v in bindings.items()}
+                print(f"{query} Solution {i}: {json.dumps(pretty, indent=2, sort_keys=True)}")
+
+    finally:
+        pyergo_end_session()
 
 if __name__ == "__main__":
     main()
