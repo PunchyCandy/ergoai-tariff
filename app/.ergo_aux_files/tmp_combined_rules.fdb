@@ -26,3 +26,4 @@ FLORA_THIS_WORKSPACE(tblflapply)(exec_override,eo_2025_1101,usa,china,hs8517_62,
 FLORA_THIS_WORKSPACE(tblflapply)(exec_override,eo_2026_0101,usa,japan,hs8504_40,0.02,flapply(date,2026,1,1),eo_2026_0101,__newcontextvar3).
 FLORA_THIS_WORKSPACE(tblflapply)(exempt_rule,r_fta_canada_router,canada,usa,hs8517_62,flapply(date,2019,1,1),fta_demo,__newcontextvar3).
 FLORA_THIS_WORKSPACE(tblflapply)(de_minimis,usa,800,flapply(date,2016,1,1),de_minimis_demo,__newcontextvar3).
+FLORA_THIS_WORKSPACE(tblflapply)(shipment,runtime_quote,china,usa,p_router,1000,flapply(date,2025,11,10),__newcontextvar3).
