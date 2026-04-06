@@ -1,7 +1,9 @@
 import argparse
 import json
 import os
+import shutil
 import sys
+import tempfile
 from contextlib import contextmanager
 from typing import Any
 
@@ -230,13 +232,34 @@ def ergo_session():
 class TariffApp:
     def __init__(self) -> None:
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.combined_path = os.path.join(self.base_dir, "tmp_combined_rules.ergo")
+        self.runtime_dir = tempfile.mkdtemp(prefix="ergoai_tariff_", dir=tempfile.gettempdir())
+        self.load_count = 0
+
+    def close(self) -> None:
+        shutil.rmtree(self.runtime_dir, ignore_errors=True)
+
+    def _next_combined_path(self) -> str:
+        self.load_count += 1
+        return os.path.join(self.runtime_dir, f"combined_{self.load_count}.ergo")
 
     def load_kb(self, additional_facts: str = "") -> None:
         combined_kb = build_combined_kb(self.base_dir, additional_facts=additional_facts)
-        with open(self.combined_path, "w", encoding="utf-8") as out:
-            out.write(combined_kb)
-        pyergo_command(f"['{self.combined_path}'].")
+        last_error = None
+
+        # Ergo writes compiled artifacts next to the consulted file, so each load gets
+        # its own unique path to avoid stale cache conflicts and cross-process races.
+        for _ in range(2):
+            combined_path = self._next_combined_path()
+            with open(combined_path, "w", encoding="utf-8") as out:
+                out.write(combined_kb)
+            try:
+                pyergo_command(f"['{combined_path}'].")
+                return
+            except Exception as exc:
+                last_error = exc
+
+        if last_error is not None:
+            raise last_error
 
     def query(self, query_text: str) -> list[dict[str, Any]]:
         answers = pyergo_query(query_text)
@@ -482,6 +505,7 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
     command = args.command or "list"
+    app: TariffApp | None = None
 
     try:
         with ergo_session():
@@ -508,6 +532,9 @@ def main() -> int:
     except (ValueError, EnvironmentError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
+    finally:
+        if app is not None:
+            app.close()
 
 
 if __name__ == "__main__":
