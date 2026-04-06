@@ -22,28 +22,6 @@ shipment(s3, canada, usa, p_router, 500,  date(2025,10, 5)).
 shipment(s4, china,  usa, p_laptop, 700,  date(2025, 9,20)).
 shipment(s5, japan,  usa, p_parts,  1200, date(2026, 2, 2)).
 
-/* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/policy/usa_base.ergo ---- */
-/* policy/usa_base.ergo */
-
-tariff_rate(usa, hs8517_62, 0.05, date(2020,1,1), date(9999,12,31), hts_base).
-tariff_rate(usa, hs8471_30, 0.02, date(2020,1,1), date(9999,12,31), hts_base).
-tariff_rate(usa, hs6109_10, 0.12, date(2020,1,1), date(9999,12,31), hts_base).
-tariff_rate(usa, hs6403_99, 0.08, date(2020,1,1), date(9999,12,31), hts_base).
-tariff_rate(usa, hs8504_40, 0.03, date(2020,1,1), date(9999,12,31), hts_base).
-
-/* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/policy/usa_exec_overrides.ergo ---- */
-/* policy/usa_exec_overrides.ergo */
-
-exec_override(eo_2025_1101, usa, china, hs8517_62, 0.10, date(2025,11,1), eo_2025_1101).
-exec_override(eo_2026_0101, usa, japan, hs8504_40, 0.02, date(2026, 1,1), eo_2026_0101).
-
-/* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/policy/exemptions.ergo ---- */
-/* policy/exemptions.ergo */
-
-exempt_rule(r_fta_canada_router, canada, usa, hs8517_62, date(2019,1,1), fta_demo).
-
-de_minimis(usa, 800, date(2016,1,1), de_minimis_demo).
-
 /* ---- /Users/punchycandy/Downloads/ergoai-tariff/app/rules/decision.ergo ---- */
 /* rules/decision.ergo */
 
@@ -55,65 +33,24 @@ date_le(?D1, ?D2) :- date_int(?D1, ?I1), date_int(?D2, ?I2), ?I1 =< ?I2.
 
 active_on(?D, ?From, ?To) :- date_ge(?D, ?From), date_le(?D, ?To).
 
-/* De minimis applies if value <= threshold and date >= effective_from */
-de_minimis_applies(?S, ?Threshold, ?Src) :-
-  shipment(?S, ?_O, ?I, ?_P, ?V, ?D),
-  de_minimis(?I, ?Threshold, ?From, ?Src),
-  date_ge(?D, ?From),
-  ?V =< ?Threshold.
-
-/* Explicit exemption rule (FTA-style) */
-exempt_applies(?S, ?RuleId, ?Src) :-
-  shipment(?S, ?O, ?I, ?P, ?_V, ?D),
-  product(?P, ?H, ?_Cat, ?_Desc),
-  exempt_rule(?RuleId, ?O, ?I, ?H, ?From, ?Src),
-  date_ge(?D, ?From).
-
-/* Base rate lookup */
-base_rate(?I, ?H, ?D, ?Rb, ?Src) :-
-  tariff_rate(?I, ?H, ?Rb, ?From, ?To, ?Src),
+/* Base rate lookup from retrieved tariff facts */
+base_rate(?I, ?H, ?D, ?Rate, ?Src) :-
+  tariff_rate(?I, ?H, ?Rate, ?From, ?To, ?Src),
   active_on(?D, ?From, ?To).
 
-/* Pick one applicable override (if present) */
-override_delta(?I, ?O, ?H, ?D, ?R, ?Src) :-
-  exec_override(?_EO, ?I, ?O, ?H, ?R, ?Eff, ?Src),
-  date_ge(?D, ?Eff).
-
-override_exists(?I, ?O, ?H, ?D) :-
-  exec_override(?_EO, ?I, ?O, ?H, ?_R, ?Eff, ?_Src),
-  date_ge(?D, ?Eff).
-
-override_delta(?I, ?O, ?H, ?D, 0.0, none) :-
-  shipment(?_S, ?O, ?I, ?P, ?_V, ?D),
-  product(?P, ?H, ?_Cat, ?_Desc),
-  \naf override_exists(?I, ?O, ?H, ?D).
-
-de_minimis_applies_s(?S) :- de_minimis_applies(?S, ?_T, ?_Sx).
-exempt_applies_s(?S) :- exempt_applies(?S, ?_R, ?_Rx).
-
-/* Applicable rate with precedence */
-applicable_rate(?S, 0.0, expl(de_minimis, detail(items([threshold_usd(?Thr), source(?Src)])))) :-
-  de_minimis_applies(?S, ?Thr, ?Src).
-
-applicable_rate(?S, 0.0, expl(exempt, detail(items([rule(?R), source(?Src)])))) :-
-  \naf de_minimis_applies_s(?S),
-  exempt_applies(?S, ?R, ?Src).
-
-applicable_rate(?S, ?Rtotal,
-  expl(tariff, detail(items([hs_code(?H), label(?HL), base(?Rb,?Bsrc), override(?Ro,?Osrc)])))) :-
-  \naf de_minimis_applies_s(?S),
-  \naf exempt_applies_s(?S),
-  shipment(?S, ?O, ?I, ?P, ?_V, ?D),
-  product(?P, ?H, ?_Cat, ?_Desc),
+applicable_rate(?S, ?Rate,
+  expl(tariff, detail(items([hs_code(?H), label(?HL), base(?Rate,?Src)])))) :-
+  shipment(?S, ?_Origin, ?ImportCountry, ?Product, ?_Value, ?Date),
+  product(?Product, ?H, ?_Category, ?_Description),
   hs_label(?H, ?HL),
-  base_rate(?I, ?H, ?D, ?Rb, ?Bsrc),
-  override_delta(?I, ?O, ?H, ?D, ?Ro, ?Osrc),
-  ?Rtotal \is (?Rb + ?Ro).
+  base_rate(?ImportCountry, ?H, ?Date, ?Rate, ?Src).
 
 duty(?S, ?DutyUSD, ?Rate, ?Expl) :-
-  shipment(?S, ?_O, ?_I, ?_P, ?V, ?_D),
+  shipment(?S, ?_Origin, ?_ImportCountry, ?_Product, ?Value, ?_Date),
   applicable_rate(?S, ?Rate, ?Expl),
-  ?DutyUSD \is (?V * ?Rate).
+  ?DutyUSD \is (?Value * ?Rate).
 
 /* ---- runtime input ---- */
-shipment(runtime_quote, china, usa, p_router, 1000, date(2025,11,10)).
+shipment(runtime_quote, japan, usa, p_parts, 1200, date(2026,2,2)).
+/* ---- retrieved HTS policy facts ---- */
+tariff_rate(usa, hs8504_40, 0.0, date(2025,1,1), date(9999,12,31), htsus_2025_json).

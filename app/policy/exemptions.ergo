@@ -1,5 +1,0 @@
-/* policy/exemptions.ergo */
-
-exempt_rule(r_fta_canada_router, canada, usa, hs8517_62, date(2019,1,1), fta_demo).
-
-de_minimis(usa, 800, date(2016,1,1), de_minimis_demo).

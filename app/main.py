@@ -7,6 +7,12 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from rag.ingest import normalize_hs_code, policy_records_to_ergo_facts, retrieve_policy
+
 load_dotenv()
 
 ERGOROOT = os.getenv("ERGOROOT")
@@ -35,9 +41,6 @@ except Exception as e:
 BASE_RULE_FILES = [
     "data/products.ergo",
     "data/shipments.ergo",
-    "policy/usa_base.ergo",
-    "policy/usa_exec_overrides.ergo",
-    "policy/exemptions.ergo",
     "rules/decision.ergo",
 ]
 RUNTIME_SHIPMENT_ID = "runtime_quote"
@@ -99,6 +102,16 @@ def normalize_bindings(payload: Any) -> Any:
     return payload
 
 
+def enrich_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    result = payload.get("result")
+    if isinstance(result, dict):
+        if "duty_usd" in result and "total_tariff_amount_usd" not in result:
+            result["total_tariff_amount_usd"] = result["duty_usd"]
+        if "rate" in result and "total_tariff_rate_percent" not in result:
+            result["total_tariff_rate_percent"] = round(float(result["rate"]) * 100, 4)
+    return payload
+
+
 def ergo_atom(value: str) -> str:
     normalized = value.strip().lower().replace("-", "_").replace(" ", "_")
     if not normalized:
@@ -134,6 +147,17 @@ def ergo_number(value: float) -> str:
     return format(float(value), ".10g")
 
 
+def iso_date(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict) and value.get("functor") == "date":
+        args = value.get("args", [])
+        if len(args) == 3:
+            year, month, day = args
+            return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+    raise ValueError(f"Unsupported shipment date format: {value!r}")
+
+
 def render_runtime_facts(args: argparse.Namespace) -> str:
     origin = ergo_atom(args.origin)
     import_country = ergo_atom(args.import_country)
@@ -147,7 +171,7 @@ def render_runtime_facts(args: argparse.Namespace) -> str:
     ]
 
     if args.hs_code:
-        hs_code = ergo_atom(args.hs_code)
+        hs_code = normalize_hs_code(args.hs_code)
         category = ergo_atom(args.category or "user_defined")
         description = ergo_atom(args.description or "runtime_product")
         hs_label = ergo_atom(args.hs_label or f"label_{hs_code}")
@@ -155,6 +179,30 @@ def render_runtime_facts(args: argparse.Namespace) -> str:
         fact_lines.append(f"hs_label({hs_code}, {hs_label}).")
 
     return "\n".join(fact_lines) + "\n"
+
+
+def retrieve_runtime_policy(
+    *,
+    hs_code: str,
+    origin: str,
+    import_country: str,
+    shipment_date: str,
+) -> tuple[str, list[dict[str, Any]]]:
+    retrieved_policy = retrieve_policy(
+        {
+            "hts_code": hs_code,
+            "origin": origin,
+            "import_country": import_country,
+            "date": shipment_date,
+        }
+    )
+    if not retrieved_policy:
+        raise ValueError(
+            f"No HTS policy records were found for HS code '{hs_code}', "
+            f"origin '{origin}', import country '{import_country}', and date '{shipment_date}'."
+        )
+
+    return policy_records_to_ergo_facts(retrieved_policy), retrieved_policy
 
 
 def build_combined_kb(base_dir: str, additional_facts: str = "") -> str:
@@ -204,6 +252,10 @@ class TariffApp:
         self.load_kb()
         return self.query("shipment(?Shipment, ?Origin, ?ImportCountry, ?Product, ?Value, ?Date).")
 
+    def get_product_catalog(self, additional_facts: str = "") -> list[dict[str, Any]]:
+        self.load_kb(additional_facts=additional_facts)
+        return self.query("product(?Product, ?HsCode, ?Category, ?Description).")
+
     def evaluate_shipment_id(self, shipment_id: str) -> dict[str, Any]:
         shipment_atom = ergo_atom(shipment_id)
         self.load_kb()
@@ -214,31 +266,64 @@ class TariffApp:
         if not shipment_matches:
             raise ValueError(f"Shipment '{shipment_id}' was not found.")
 
+        shipment_input = shipment_matches[0]
+        product_catalog = self.get_product_catalog()
+        product_match = next(
+            (item for item in product_catalog if item.get("product_id") == shipment_input.get("product_id")),
+            None,
+        )
+        if not product_match or "hs_code" not in product_match:
+            raise ValueError(
+                f"Shipment '{shipment_id}' references a product without an HS code mapping."
+            )
+
+        retrieved_policy_facts, retrieved_policy = retrieve_runtime_policy(
+            hs_code=str(product_match["hs_code"]),
+            origin=str(shipment_input["origin"]),
+            import_country=str(shipment_input["import_country"]),
+            shipment_date=iso_date(shipment_input["shipment_date"]),
+        )
+        self.load_kb(additional_facts=retrieved_policy_facts)
+
         duty_matches = self.query(
             f"duty({shipment_atom}, ?DutyUSD, ?Rate, ?Explanation)."
         )
         if not duty_matches:
             raise ValueError(f"No duty result could be derived for shipment '{shipment_id}'.")
 
-        return {
-            "shipment_id": shipment_atom,
-            "input": shipment_matches[0],
-            "result": duty_matches[0],
-        }
+        return enrich_result_payload(
+            {
+                "shipment_id": shipment_atom,
+                "input": shipment_input,
+                "product": product_match,
+                "retrieved_policy": normalize_bindings(retrieved_policy),
+                "result": duty_matches[0],
+            }
+        )
 
     def evaluate_runtime_input(self, args: argparse.Namespace) -> dict[str, Any]:
-        additional_facts = render_runtime_facts(args)
-        self.load_kb(additional_facts=additional_facts)
-
+        runtime_facts = render_runtime_facts(args)
         runtime_product_id = ergo_atom(args.product_id or RUNTIME_PRODUCT_ID)
-        product_matches = self.query(
-            f"product({runtime_product_id}, ?HsCode, ?Category, ?Description)."
+        product_catalog = self.get_product_catalog(additional_facts=runtime_facts)
+        product_match = next(
+            (item for item in product_catalog if item.get("product_id") == runtime_product_id),
+            None,
         )
-        if not product_matches:
+        if not product_match:
             raise ValueError(
                 f"Product '{args.product_id}' was not found. "
                 "Use an existing product id from app/data/products.ergo or provide --hs-code."
             )
+
+        resolved_hs_code = args.hs_code or str(product_match["hs_code"])
+        retrieved_policy_facts, retrieved_policy = retrieve_runtime_policy(
+            hs_code=resolved_hs_code,
+            origin=args.origin,
+            import_country=args.import_country,
+            shipment_date=args.date,
+        )
+        additional_facts = runtime_facts + retrieved_policy_facts
+        self.load_kb(additional_facts=additional_facts)
 
         duty_matches = self.query(
             f"duty({RUNTIME_SHIPMENT_ID}, ?DutyUSD, ?Rate, ?Explanation)."
@@ -256,11 +341,13 @@ class TariffApp:
             "result": duty_matches[0],
             "product": {
                 "product_id": runtime_product_id,
-                **product_matches[0],
+                **product_match,
             },
         }
 
-        return result
+        result["retrieved_policy"] = normalize_bindings(retrieved_policy)
+
+        return enrich_result_payload(result)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -293,7 +380,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     quote_parser.add_argument(
         "--hs-code",
-        help="Custom HS code to evaluate. Provide this to define a runtime product.",
+        help="Custom HTS code to evaluate. This triggers retrieval from the local HTS policy corpus.",
     )
     quote_parser.add_argument(
         "--category",
@@ -357,10 +444,10 @@ def run_interactive(app: TariffApp, json_only: bool) -> int:
 
     if product_mode == "hs":
         args.product_id = prompt("Product id", RUNTIME_PRODUCT_ID)
-        args.hs_code = prompt("HS code", "hs8517_62")
+        args.hs_code = prompt("HS code", "8517.62")
         args.category = prompt("Category", "electronics")
         args.description = prompt("Description", "runtime_product")
-        args.hs_label = prompt("HS label", f"label_{args.hs_code}")
+        args.hs_label = prompt("HS label", f"label_{normalize_hs_code(args.hs_code)}")
     else:
         args.product_id = prompt("Existing product id", "p_router")
 
@@ -384,6 +471,9 @@ def print_output(payload: dict[str, Any] | list[dict[str, Any]], json_only: bool
     if "product" in payload:
         print("\nProduct")
         print(json.dumps(payload["product"], indent=2, sort_keys=True))
+    if "retrieved_policy" in payload:
+        print("\nRetrieved Policy")
+        print(json.dumps(payload["retrieved_policy"], indent=2, sort_keys=True))
     print("\nResult")
     print(json.dumps(payload.get("result", {}), indent=2, sort_keys=True))
 

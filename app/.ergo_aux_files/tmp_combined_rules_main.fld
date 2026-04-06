@@ -491,23 +491,14 @@
 
 
 
-'_$_$_ergo''mod''main''tblflapply'(de_minimis_applies_s,__fldnewvar1,__fldnewvar2).
-'_$_$_ergo''mod''main''tblflapply'(de_minimis,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
-'_$_$_ergo''mod''main''tblflapply'(tariff_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
-'_$_$_ergo''mod''main''tblflapply'(de_minimis_applies,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).
-'_$_$_ergo''mod''main''tblflapply'(exempt_applies_s,__fldnewvar1,__fldnewvar2).
 '_$_$_ergo''mod''main''tblflapply'(shipment,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
-'_$_$_ergo''mod''main''tblflapply'(applicable_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).
-'_$_$_ergo''mod''main''tblflapply'(exec_override,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7,__fldnewvar8).
-'_$_$_ergo''mod''main''tblflapply'(date_int,__fldnewvar1,__fldnewvar2,__fldnewvar3).
-'_$_$_ergo''mod''main''tblflapply'(exempt_applies,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).
-'_$_$_ergo''mod''main''tblflapply'(product,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
 '_$_$_ergo''mod''main''tblflapply'(hs_label,__fldnewvar1,__fldnewvar2,__fldnewvar3).
-'_$_$_ergo''mod''main''tblflapply'(base_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6).
 '_$_$_ergo''mod''main''tblflapply'(date_ge,__fldnewvar1,__fldnewvar2,__fldnewvar3).
-'_$_$_ergo''mod''main''tblflapply'(override_delta,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
-'_$_$_ergo''mod''main''tblflapply'(exempt_rule,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
-'_$_$_ergo''mod''main''tblflapply'(override_exists,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
-'_$_$_ergo''mod''main''tblflapply'(duty,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
-'_$_$_ergo''mod''main''tblflapply'(date_le,__fldnewvar1,__fldnewvar2,__fldnewvar3).
 '_$_$_ergo''mod''main''tblflapply'(active_on,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).
+'_$_$_ergo''mod''main''tblflapply'(base_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6).
+'_$_$_ergo''mod''main''tblflapply'(product,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
+'_$_$_ergo''mod''main''tblflapply'(tariff_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
+'_$_$_ergo''mod''main''tblflapply'(date_le,__fldnewvar1,__fldnewvar2,__fldnewvar3).
+'_$_$_ergo''mod''main''tblflapply'(duty,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
+'_$_$_ergo''mod''main''tblflapply'(date_int,__fldnewvar1,__fldnewvar2,__fldnewvar3).
+'_$_$_ergo''mod''main''tblflapply'(applicable_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).

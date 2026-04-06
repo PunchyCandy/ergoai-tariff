@@ -358,13 +358,5 @@
 '_$_$_ergo''mod''main''tblflapply'(shipment,s3,canada,usa,p_router,500,flapply(date,2025,10,5),__newcontextvar3).
 '_$_$_ergo''mod''main''tblflapply'(shipment,s4,china,usa,p_laptop,700,flapply(date,2025,9,20),__newcontextvar3).
 '_$_$_ergo''mod''main''tblflapply'(shipment,s5,japan,usa,p_parts,1200,flapply(date,2026,2,2),__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(tariff_rate,usa,hs8517_62,0.050000000000000003,flapply(date,2020,1,1),flapply(date,9999,12,31),hts_base,__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(tariff_rate,usa,hs8471_30,0.02,flapply(date,2020,1,1),flapply(date,9999,12,31),hts_base,__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(tariff_rate,usa,hs6109_10,0.12,flapply(date,2020,1,1),flapply(date,9999,12,31),hts_base,__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(tariff_rate,usa,hs6403_99,0.080000000000000002,flapply(date,2020,1,1),flapply(date,9999,12,31),hts_base,__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(tariff_rate,usa,hs8504_40,0.029999999999999999,flapply(date,2020,1,1),flapply(date,9999,12,31),hts_base,__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(exec_override,eo_2025_1101,usa,china,hs8517_62,0.10000000000000001,flapply(date,2025,11,1),eo_2025_1101,__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(exec_override,eo_2026_0101,usa,japan,hs8504_40,0.02,flapply(date,2026,1,1),eo_2026_0101,__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(exempt_rule,r_fta_canada_router,canada,usa,hs8517_62,flapply(date,2019,1,1),fta_demo,__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(de_minimis,usa,800,flapply(date,2016,1,1),de_minimis_demo,__newcontextvar3).
-'_$_$_ergo''mod''main''tblflapply'(shipment,runtime_quote,china,usa,p_router,1000,flapply(date,2025,11,10),__newcontextvar3).
+'_$_$_ergo''mod''main''tblflapply'(shipment,runtime_quote,japan,usa,p_parts,1200,flapply(date,2026,2,2),__newcontextvar3).
+'_$_$_ergo''mod''main''tblflapply'(tariff_rate,usa,hs8504_40,0.0,flapply(date,2025,1,1),flapply(date,9999,12,31),htsus_2025_json,__newcontextvar3).

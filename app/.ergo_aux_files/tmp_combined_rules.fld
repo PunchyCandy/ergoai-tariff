@@ -1,25 +1,16 @@
 #include "flrheader.flh"
 #include "flr_fld_standardtypes.flh"
 
-#define FLORA_COMPILATION_ID 1
+#define FLORA_COMPILATION_ID 2
 
-FLORA_THIS_WORKSPACE(tblflapply)(de_minimis_applies_s,__fldnewvar1,__fldnewvar2).
-FLORA_THIS_WORKSPACE(tblflapply)(de_minimis,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
-FLORA_THIS_WORKSPACE(tblflapply)(tariff_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
-FLORA_THIS_WORKSPACE(tblflapply)(de_minimis_applies,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).
-FLORA_THIS_WORKSPACE(tblflapply)(exempt_applies_s,__fldnewvar1,__fldnewvar2).
 FLORA_THIS_WORKSPACE(tblflapply)(shipment,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
-FLORA_THIS_WORKSPACE(tblflapply)(applicable_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).
-FLORA_THIS_WORKSPACE(tblflapply)(exec_override,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7,__fldnewvar8).
-FLORA_THIS_WORKSPACE(tblflapply)(date_int,__fldnewvar1,__fldnewvar2,__fldnewvar3).
-FLORA_THIS_WORKSPACE(tblflapply)(exempt_applies,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).
-FLORA_THIS_WORKSPACE(tblflapply)(product,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
 FLORA_THIS_WORKSPACE(tblflapply)(hs_label,__fldnewvar1,__fldnewvar2,__fldnewvar3).
-FLORA_THIS_WORKSPACE(tblflapply)(base_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6).
 FLORA_THIS_WORKSPACE(tblflapply)(date_ge,__fldnewvar1,__fldnewvar2,__fldnewvar3).
-FLORA_THIS_WORKSPACE(tblflapply)(override_delta,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
-FLORA_THIS_WORKSPACE(tblflapply)(exempt_rule,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
-FLORA_THIS_WORKSPACE(tblflapply)(override_exists,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
-FLORA_THIS_WORKSPACE(tblflapply)(duty,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
-FLORA_THIS_WORKSPACE(tblflapply)(date_le,__fldnewvar1,__fldnewvar2,__fldnewvar3).
 FLORA_THIS_WORKSPACE(tblflapply)(active_on,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).
+FLORA_THIS_WORKSPACE(tblflapply)(base_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6).
+FLORA_THIS_WORKSPACE(tblflapply)(product,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
+FLORA_THIS_WORKSPACE(tblflapply)(tariff_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5,__fldnewvar6,__fldnewvar7).
+FLORA_THIS_WORKSPACE(tblflapply)(date_le,__fldnewvar1,__fldnewvar2,__fldnewvar3).
+FLORA_THIS_WORKSPACE(tblflapply)(duty,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4,__fldnewvar5).
+FLORA_THIS_WORKSPACE(tblflapply)(date_int,__fldnewvar1,__fldnewvar2,__fldnewvar3).
+FLORA_THIS_WORKSPACE(tblflapply)(applicable_rate,__fldnewvar1,__fldnewvar2,__fldnewvar3,__fldnewvar4).
